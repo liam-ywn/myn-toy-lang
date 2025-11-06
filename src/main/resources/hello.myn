@@ -1,0 +1,33 @@
+println("Hello, Myn!");
+
+// Immutable variable
+let x: Int = 10;
+
+// Mutable variable
+var y = x + 32;
+println("y = " + y);
+
+// Function definition
+fun add(a: Int, b: Int): Int {
+  return a + b;
+}
+
+println("add(2,3) = " + add(2, 3));
+
+// While loop example
+var i = 0;
+while (i < 3) {
+  println("i = " + i);
+  i = i + 1;
+}
+
+// Nested function + closure (makeAdder)
+fun makeAdder(n: Int): Int {
+  fun inner(x: Int): Int {
+    return x + n;
+  }
+  return inner;
+}
+
+var add5 = makeAdder(5);
+println("add5(7) = " + add5(7));  // 12
