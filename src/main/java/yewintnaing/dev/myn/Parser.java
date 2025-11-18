@@ -2,6 +2,8 @@ package yewintnaing.dev.myn;
 
 import java.util.*;
 
+import static yewintnaing.dev.myn.TokenType.*;
+
 final class Parser {
     private final List<Token> t;
     private int i = 0;
@@ -184,11 +186,29 @@ final class Parser {
         return expr;
     }
 
+//    private Expr unary() {
+//        if (match(TokenType.BANG, TokenType.MINUS)) {
+//            return new Expr.Unary(prev().lexeme(), unary());
+//        }
+//        return call();
+//    }
+
     private Expr unary() {
-        if (match(TokenType.BANG, TokenType.MINUS)) {
-            return new Expr.Unary(prev().lexeme(), unary());
+        if (match(BANG, MINUS, PLUS_PLUS, MINUS_MINUS)) {
+            String op = prev().lexeme();   // "!", "-", "++", "--"
+            Expr right = unary();          // recursively parse operand
+            return new Expr.Prefix(op, right);
         }
-        return call();
+        return postfix();
+    }
+
+    private Expr postfix() {
+        Expr expr = call();  // start from call(), so x++ works later
+        while (match(PLUS_PLUS, MINUS_MINUS)) {
+            String op = prev().lexeme();   // "++" or "--"
+            expr = new Expr.Postfix(op, expr);
+        }
+        return expr;
     }
 
     private Expr call() {

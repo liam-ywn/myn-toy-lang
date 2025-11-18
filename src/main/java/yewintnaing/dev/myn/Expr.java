@@ -2,7 +2,17 @@ package yewintnaing.dev.myn;
 
 import java.util.List;
 
-sealed interface Expr permits Expr.Literal, Expr.Var, Expr.Assign, Expr.Unary, Expr.Binary, Expr.Call, Expr.Grouping {
+sealed interface Expr
+    permits Expr.Assign,
+            Expr.Binary,
+            Expr.Call,
+            Expr.Grouping,
+            Expr.Literal,
+            Expr.Postfix,
+            Expr.Prefix,
+            Expr.Unary,
+            Expr.Var {
+
     record Literal(Object value) implements Expr {
     }
 
@@ -23,4 +33,9 @@ sealed interface Expr permits Expr.Literal, Expr.Var, Expr.Assign, Expr.Unary, E
 
     record Grouping(Expr expr) implements Expr {
     }
+
+    record Prefix(String op, Expr target) implements Expr { }
+
+    record Postfix(String op, Expr target) implements Expr { }
+
 }

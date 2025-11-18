@@ -44,13 +44,14 @@ public class Main {
             Lexer lexer = new Lexer(src);
             List<Token> tokens = lexer.scan();
 
+
             // Parsing into AST
             Parser parser = new Parser(tokens);
             List<Stmt> program = parser.parse();
 
-            // Interpretation
+
+//             Interpretation
             Interpreter interpreter = new Interpreter();
-//            System.out.println(program.size());
             interpreter.exec(program);
 
         } catch (Exception e) {

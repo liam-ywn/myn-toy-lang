@@ -54,7 +54,8 @@ final class Interpreter {
             while (truthy(eval(cond))) exec(body);
         } else if (s instanceof Stmt.Expr(Expr expr)) {
             eval(expr);
-        } else if (s instanceof Stmt.Return(Expr value)) {
+        }
+        else if (s instanceof Stmt.Return(Expr value)) {
 
             if (functionDepth == 0) {
                 throw new RuntimeException("return is only allowed inside a function");
@@ -99,6 +100,56 @@ final class Interpreter {
                 throw new RuntimeException("Undefined variable: " + name);
             }
             return val;
+        }
+
+        if (e instanceof Expr.Postfix(String op, Expr target)) {
+            Value val = eval(target);
+            return switch (op) {
+                case "++" -> {
+                    if (val instanceof Value.IntV(long v)) {
+                        long newVal = v + 1;
+                        env.assign(((Expr.Var) target).name(), new Value.IntV(newVal));
+                        yield new Value.IntV(v);
+                    }else {
+                        throw new RuntimeException("Postfix ++ can only be applied to Int");
+                    }
+                }
+                case "--" -> {
+                    if (val instanceof Value.IntV(long v)) {
+                        long newVal = v - 1;
+                        env.assign(((Expr.Var) target).name(), new Value.IntV(newVal));
+                        yield new Value.IntV(v);
+                    }else {
+                        throw new RuntimeException("Postfix -- can only be applied to Int");
+                    }
+                }
+                default -> throw new RuntimeException("bad postfix op: " + op);
+            };
+        }
+
+        if (e instanceof Expr.Prefix(String op, Expr target)) {
+            Value val = eval(target);
+            return switch (op) {
+                case "++" -> {
+                    if (val instanceof Value.IntV(long v)) {
+                        long newVal = v + 1;
+                        env.assign(((Expr.Var) target).name(), new Value.IntV(newVal));
+                        yield new Value.IntV(newVal);
+                    } else {
+                        throw new RuntimeException("Prefix ++ can only be applied to Int");
+                    }
+                }
+                case "--" -> {
+                    if (val instanceof Value.IntV(long v)) {
+                        long newVal = v - 1;
+                        env.assign(((Expr.Var) target).name(), new Value.IntV(newVal));
+                        yield new Value.IntV(newVal);
+                    } else {
+                        throw new RuntimeException("Prefix -- can only be applied to Int");
+                    }
+                }
+                default -> throw new RuntimeException("bad prefix op: " + op);
+            };
         }
 
         if (e instanceof Expr.Unary(String op, Expr right)) {
