@@ -83,6 +83,48 @@ class InterpreterSemanticsTest {
         assertTrue(error.getMessage().contains("Only Int literals are supported right now"));
     }
 
+    @Test
+    void interpreterStatePersistsAcrossExecCalls() {
+        Interpreter interpreter = new Interpreter();
+
+        runProgram(interpreter, """
+                var x = 1;
+                """);
+
+        String output = runProgram(interpreter, """
+                x = x + 2;
+                println(x);
+                """);
+
+        assertEquals("3%n".formatted(), output);
+    }
+
+    @Test
+    void replExecutionReturnsBareExpressionValue() {
+        Interpreter interpreter = new Interpreter();
+
+        runProgram(interpreter, """
+                var x = 2;
+                """);
+
+        String output = runReplProgram(interpreter, """
+                x + 3;
+                """);
+
+        assertEquals("5%n".formatted(), output);
+    }
+
+    @Test
+    void replExecutionDoesNotPrintUnitResults() {
+        Interpreter interpreter = new Interpreter();
+
+        String output = runReplProgram(interpreter, """
+                var x = 2;
+                """);
+
+        assertEquals("", output);
+    }
+
     private static List<Stmt> parse(String src) {
         Lexer lexer = new Lexer(src);
         Parser parser = new Parser(lexer.scan());
@@ -90,13 +132,33 @@ class InterpreterSemanticsTest {
     }
 
     private static String runProgram(String src) {
+        return runProgram(new Interpreter(), src);
+    }
+
+    private static String runProgram(Interpreter interpreter, String src) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintStream originalOut = System.out;
 
         try (PrintStream capture = new PrintStream(out, true, StandardCharsets.UTF_8)) {
             System.setOut(capture);
-            Interpreter interpreter = new Interpreter();
             interpreter.exec(parse(src));
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        return out.toString(StandardCharsets.UTF_8);
+    }
+
+    private static String runReplProgram(Interpreter interpreter, String src) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PrintStream originalOut = System.out;
+
+        try (PrintStream capture = new PrintStream(out, true, StandardCharsets.UTF_8)) {
+            System.setOut(capture);
+            Value result = interpreter.execForRepl(parse(src));
+            if (!(result instanceof Value.UnitV)) {
+                System.out.println(Interpreter.stringify(result));
+            }
         } finally {
             System.setOut(originalOut);
         }

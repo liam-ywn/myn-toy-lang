@@ -7,13 +7,19 @@ final class Interpreter {
     private int functionDepth = 0;
 
     Interpreter() {
-//        env.define("print", new Value.UnitV());
-//        env.define("println", new Value.UnitV());
+        installBuiltins(env);
     }
 
     void exec(List<Stmt> stmts) {
-        installBuiltins(env);
         for (Stmt s : stmts) exec(s);
+    }
+
+    Value execForRepl(List<Stmt> stmts) {
+        Value last = new Value.UnitV();
+        for (Stmt s : stmts) {
+            last = execForRepl(s);
+        }
+        return last;
     }
 
     private void installBuiltins(Environment base) {
@@ -63,6 +69,14 @@ final class Interpreter {
 
             throw new ReturnSignal(value == null ? new Value.UnitV() : eval(value));
         }
+    }
+
+    private Value execForRepl(Stmt s) {
+        if (s instanceof Stmt.Expr(Expr expr)) {
+            return eval(expr);
+        }
+        exec(s);
+        return new Value.UnitV();
     }
 
     private void execBlock(List<Stmt> statements, Environment local) {
@@ -259,7 +273,7 @@ final class Interpreter {
         };
     }
 
-    private static String stringify(Value v) {
+    static String stringify(Value v) {
         return switch (v) {
             case Value.IntV i -> Long.toString(i.v());
             case Value.BoolV b -> Boolean.toString(b.v());
