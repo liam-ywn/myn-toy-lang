@@ -194,19 +194,24 @@ final class Parser {
 //    }
 
     private Expr unary() {
-        if (match(BANG, MINUS, PLUS_PLUS, MINUS_MINUS)) {
-            String op = prev().lexeme();   // "!", "-", "++", "--"
-            Expr right = unary();          // recursively parse operand
-            return new Expr.Prefix(op, right);
+        if (match(BANG, MINUS)) {
+            return new Expr.Unary(prev().lexeme(), unary());
+        }
+        if (match(PLUS_PLUS, MINUS_MINUS)) {
+            Token op = prev();
+            Expr target = call();
+            ensureVariableTarget(target, op, "prefix");
+            return new Expr.Prefix(op.lexeme(), target);
         }
         return postfix();
     }
 
     private Expr postfix() {
-        Expr expr = call();  // start from call(), so x++ works later
+        Expr expr = call();
         while (match(PLUS_PLUS, MINUS_MINUS)) {
-            String op = prev().lexeme();   // "++" or "--"
-            expr = new Expr.Postfix(op, expr);
+            Token op = prev();
+            ensureVariableTarget(expr, op, "postfix");
+            expr = new Expr.Postfix(op.lexeme(), expr);
         }
         return expr;
     }
@@ -280,5 +285,11 @@ final class Parser {
 
     private static RuntimeException error(Token tok, String msg) {
         return new RuntimeException("[line" + tok.line() + ", col " + tok.col() + "] " + msg + " " + tok.lexeme());
+    }
+
+    private static void ensureVariableTarget(Expr expr, Token op, String position) {
+        if (!(expr instanceof Expr.Var)) {
+            throw error(op, "Invalid " + position + " increment/decrement target");
+        }
     }
 }

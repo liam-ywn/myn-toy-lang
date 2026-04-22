@@ -198,14 +198,19 @@ final class Interpreter {
 
     private Value callFunction(Value callee, List<Value> args) {
         if (callee instanceof Value.NativeV(int arity, java.util.function.Function<List<Value>, Value> call)) {
-            if (args.size() != arity) throw new RuntimeException("arity mismatch");
+            if (args.size() != arity) {
+                throw new RuntimeException("arity mismatch: expected " + arity + " arguments but got " + args.size());
+            }
             return call.apply(args);
         }
         if (callee instanceof Value.FuncV f) {
+            if (args.size() != f.params().size()) {
+                throw new RuntimeException("arity mismatch: expected " + f.params().size() + " arguments but got " + args.size());
+            }
             Environment local = new Environment(f.closure());
             for (int i = 0; i < f.params().size(); i++) {
                 String name = f.params().get(i);
-                Value val = i < args.size() ? args.get(i) : new Value.UnitV();
+                Value val = args.get(i);
                 local.define(name, val);
             }
             try {

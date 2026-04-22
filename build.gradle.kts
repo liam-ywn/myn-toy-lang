@@ -8,7 +8,13 @@ java {
     }
 }
 
-dependencies { }
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+}
 
 application {
     mainClass.set("yewintnaing.dev.myn.Main")

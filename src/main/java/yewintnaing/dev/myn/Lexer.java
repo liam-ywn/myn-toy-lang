@@ -103,8 +103,7 @@ final class Lexer {
 
         while (isDigit(peek())) advance();
         if (peek() == '.' && isDigit(peekNext())) {
-            do { advance(); }
-            while (isDigit(peek()));
+            err("Only Int literals are supported right now");
         }
         add(TokenType.NUMBER, Double.parseDouble(src.substring(start, current)));
     }
