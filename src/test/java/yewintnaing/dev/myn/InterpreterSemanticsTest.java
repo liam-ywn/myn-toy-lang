@@ -125,6 +125,26 @@ class InterpreterSemanticsTest {
         assertEquals("", output);
     }
 
+    @Test
+    void replWaitsForOpenBlockBeforeSubmitting() {
+        assertTrue(!Main.isSubmissionReady("""
+                if (true) {
+                  println(1);
+                """, "  println(1);"));
+
+        assertTrue(Main.isSubmissionReady("""
+                if (true) {
+                  println(1);
+                }
+                """, "}"));
+    }
+
+    @Test
+    void replUsesContinuationPromptForBufferedInput() {
+        assertEquals("> ", Main.promptForBuffer(""));
+        assertEquals("... ", Main.promptForBuffer("if (true) {\n"));
+    }
+
     private static List<Stmt> parse(String src) {
         Lexer lexer = new Lexer(src);
         Parser parser = new Parser(lexer.scan());

@@ -6,6 +6,8 @@ It’s built to help me **learn how parsers, interpreters, and execution environ
 It supports variables (`let` / `var`), functions, conditionals, loops, and a basic REPL for experimentation.
 
 > 📄 Example script: [`src/main/resources/hello.myn`](src/main/resources/hello.myn)
+> ▶️ Runnable script samples: [`src/main/resources/scripts/`](src/main/resources/scripts)
+> 💬 REPL multiline samples: [`src/main/resources/repl/`](src/main/resources/repl) (paste into the REPL; these are not intended to be run directly as script files)
 
 ---
 
@@ -50,3 +52,6 @@ It supports variables (`let` / `var`), functions, conditionals, loops, and a bas
 git clone <your-repo-url>
 cd myn
 ./gradlew build
+./gradlew run --args='src/main/resources/hello.myn'
+./gradlew run --args='src/main/resources/scripts/multiline-if-script.myn'
+```

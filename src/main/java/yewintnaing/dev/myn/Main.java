@@ -26,10 +26,10 @@ public class Main {
         String line;
 
         while (true) {
-            System.out.print("> ");
+            System.out.print(promptForBuffer(buffer.toString()));
             line = reader.readLine();
             if (line == null) break; // EOF
-            if (line.isBlank()) continue;
+            if (line.isBlank() && buffer.isEmpty()) continue;
             buffer.append(line).append('\n');
 
             // interpret when user ends a statement
@@ -73,7 +73,12 @@ public class Main {
         return parser.parse();
     }
 
-    private static boolean isSubmissionReady(String buffer, String currentLine) {
+    static boolean isSubmissionReady(String buffer, String currentLine) {
+        ReplInputState state = analyzeInput(buffer);
+        if (!state.isBalanced()) {
+            return false;
+        }
+
         if (endsWithStatementTerminator(currentLine)) {
             return true;
         }
@@ -86,8 +91,63 @@ public class Main {
         }
     }
 
+    static String promptForBuffer(String buffer) {
+        return buffer.isEmpty() ? "> " : "... ";
+    }
+
+    private static ReplInputState analyzeInput(String src) {
+        int parenDepth = 0;
+        int braceDepth = 0;
+        boolean inString = false;
+        boolean escaping = false;
+
+        for (int i = 0; i < src.length(); i++) {
+            char c = src.charAt(i);
+
+            if (inString) {
+                if (escaping) {
+                    escaping = false;
+                    continue;
+                }
+                if (c == '\\') {
+                    escaping = true;
+                    continue;
+                }
+                if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+
+            if (c == '"') {
+                inString = true;
+                continue;
+            }
+
+            if (c == '/' && i + 1 < src.length() && src.charAt(i + 1) == '/') {
+                while (i < src.length() && src.charAt(i) != '\n') {
+                    i++;
+                }
+                continue;
+            }
+
+            if (c == '(') parenDepth++;
+            if (c == ')' && parenDepth > 0) parenDepth--;
+            if (c == '{') braceDepth++;
+            if (c == '}' && braceDepth > 0) braceDepth--;
+        }
+
+        return new ReplInputState(parenDepth, braceDepth, inString);
+    }
+
     private static boolean endsWithStatementTerminator(String line) {
         String trimmed = line.trim();
         return trimmed.endsWith(";") || trimmed.endsWith("}");
+    }
+
+    private record ReplInputState(int parenDepth, int braceDepth, boolean inString) {
+        boolean isBalanced() {
+            return parenDepth == 0 && braceDepth == 0 && !inString;
+        }
     }
 }

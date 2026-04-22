@@ -1,0 +1,10 @@
+println("Running multiline-if-script");
+
+var x = 10;
+
+if (x > 5) {
+  println("x is large");
+  println(x);
+}
+
+println(x + 2);

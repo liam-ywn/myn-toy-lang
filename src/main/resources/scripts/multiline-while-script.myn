@@ -1,0 +1,10 @@
+println("Running multiline-while-script");
+
+var i = 0;
+
+while (i < 3) {
+  println("loop i = " + i);
+  i = i + 1;
+}
+
+println(i);

@@ -1,0 +1,8 @@
+// REPL-only sample: defines a function over multiple lines, then calls it as a bare expression.
+// The final bare expression intentionally has no semicolon, so it is not meant to be run as a script file.
+fun addTwice(a: Int, b: Int): Int {
+  var total = a + b;
+  return total + total;
+}
+
+addTwice(3, 4)

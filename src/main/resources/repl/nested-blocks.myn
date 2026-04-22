@@ -1,0 +1,12 @@
+// REPL-only sample: exercises nested braces and multiline control flow in the REPL.
+// The final bare expression intentionally has no semicolon, so it is not meant to be run as a script file.
+var n = 2;
+
+if (n > 0) {
+  while (n > 0) {
+    println("count = " + n);
+    n = n - 1;
+  }
+}
+
+n

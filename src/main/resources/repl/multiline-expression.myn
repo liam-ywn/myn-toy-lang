@@ -1,0 +1,6 @@
+// REPL-only sample: paste without the trailing semicolon to test bare-expression evaluation.
+// This is intentionally not a runnable script file.
+var base = 5;
+
+(base + 3)
+  * 2

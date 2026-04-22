@@ -1,0 +1,10 @@
+// REPL-only sample: useful for testing a multiline loop body in the REPL.
+// The final bare expression intentionally has no semicolon, so it is not meant to be run as a script file.
+var i = 0;
+
+while (i < 3) {
+  println("loop i = " + i);
+  i = i + 1;
+}
+
+i

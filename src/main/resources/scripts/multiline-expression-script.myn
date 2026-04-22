@@ -1,0 +1,7 @@
+println("Running multiline-expression-script");
+
+var base = 5;
+var result = (base + 3)
+  * 2;
+
+println(result);

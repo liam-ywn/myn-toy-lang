@@ -1,0 +1,10 @@
+// REPL-only sample: paste this into the REPL line by line to exercise continuation prompts.
+// The final bare expression intentionally has no semicolon, so it is not meant to be run as a script file.
+var x = 10;
+
+if (x > 5) {
+  println("x is large");
+  println(x);
+}
+
+x + 2
