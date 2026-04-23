@@ -6,10 +6,10 @@ sealed interface Stmt permits Stmt.Block, Stmt.Var, Stmt.Func, Stmt.If, Stmt.Whi
     record Block(List<Stmt> statements) implements Stmt {
     }
 
-    record Var(boolean mutable, String name, yewintnaing.dev.myn.Expr init, String typeAnn) implements Stmt {
+    record Var(boolean mutable, Token name, yewintnaing.dev.myn.Expr init, String typeAnn) implements Stmt {
     }
 
-    record Func(String name, List<String> params, List<String> typeAnns, String retType,
+    record Func(Token name, List<String> params, List<String> typeAnns, String retType,
                 Stmt.Block body) implements Stmt {
     }
 
@@ -22,7 +22,6 @@ sealed interface Stmt permits Stmt.Block, Stmt.Var, Stmt.Func, Stmt.If, Stmt.Whi
     record Expr(yewintnaing.dev.myn.Expr expr) implements Stmt {
     }
 
-    record Return(yewintnaing.dev.myn.Expr value) implements Stmt {
+    record Return(Token keyword, yewintnaing.dev.myn.Expr value) implements Stmt {
     }
 }
-

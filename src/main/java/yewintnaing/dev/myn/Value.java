@@ -26,10 +26,11 @@ sealed interface Value
     }
 
     // User-defined function (captures closure)
-    record FuncV(List<String> params, List<String> typeAnns, List<Stmt> body, Environment closure) implements Value {
+    record FuncV(List<String> params, List<String> typeAnns, String retType, List<Stmt> body, Environment closure) implements Value {
     }
 
     // Native host function (like print, println)
-    record NativeV(int arity, java.util.function.Function<List<Value>, Value> call) implements Value {
+    record NativeV(List<String> params, List<String> typeAnns, String retType,
+                   java.util.function.Function<List<Value>, Value> call) implements Value {
     }
 }

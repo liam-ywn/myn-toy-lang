@@ -16,10 +16,10 @@ sealed interface Expr
     record Literal(Object value) implements Expr {
     }
 
-    record Var(String name) implements Expr {
+    record Var(Token name) implements Expr {
     }
 
-    record Assign(String name, Expr value) implements Expr {
+    record Assign(Token name, Expr value) implements Expr {
     }
 
     record Unary(String op, Expr right) implements Expr {
@@ -28,7 +28,7 @@ sealed interface Expr
     record Binary(Expr left, String op, Expr right) implements Expr {
     }
 
-    record Call(Expr callee, List<Expr> args) implements Expr {
+    record Call(Expr callee, Token paren, List<Expr> args) implements Expr {
     }
 
     record Grouping(Expr expr) implements Expr {

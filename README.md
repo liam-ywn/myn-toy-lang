@@ -8,6 +8,7 @@ It supports variables (`let` / `var`), functions, conditionals, loops, and a bas
 > 📄 Example script: [`src/main/resources/hello.myn`](src/main/resources/hello.myn)
 > ▶️ Runnable script samples: [`src/main/resources/scripts/`](src/main/resources/scripts)
 > 💬 REPL multiline samples: [`src/main/resources/repl/`](src/main/resources/repl) (paste into the REPL; these are not intended to be run directly as script files)
+> ☕ JVM compiler demo: [`src/main/resources/scripts/compiler-demo.myn`](src/main/resources/scripts/compiler-demo.myn)
 
 ---
 
@@ -19,6 +20,42 @@ It supports variables (`let` / `var`), functions, conditionals, loops, and a bas
 
 > ⚠️ This project is a **learning sandbox**, not a production language.
 > Code is intentionally clean and explicit for educational purposes.
+
+## 🔧 Builtins
+
+- `print(value: Any): Unit`
+- `println(value: Any): Unit`
+- `typeOf(value: Any): String`
+- `toString(value: Any): String`
+- `len(value: String): Int`
+
+## 🏭 Compiler Milestone
+
+The first JVM compiler milestone can emit a single `.class` with a `main` method for a subset of Myn scripts.
+
+Current compiled subset:
+
+- top-level statements
+- `let` / `var` locals
+- assignment
+- `if`
+- `while`
+- integer, string, and boolean expressions
+- builtin calls to `print`, `println`, `typeOf`, `toString`, and `len`
+
+Not compiled yet:
+
+- user-defined functions
+- closures
+- `Unit` locals
+- full feature parity with the interpreter
+
+Example:
+
+```bash
+./gradlew run --args='--compile src/main/resources/scripts/compiler-demo.myn build/myn'
+java -cp build/myn CompilerDemo
+```
 
 ---
 

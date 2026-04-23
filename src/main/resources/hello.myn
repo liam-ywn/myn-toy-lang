@@ -22,7 +22,7 @@ while (i < 3) {
 }
 
 // Nested function + closure (makeAdder)
-fun makeAdder(n: Int): Int {
+fun makeAdder(n: Int) {
   fun inner(x: Int): Int {
     return x + n;
   }

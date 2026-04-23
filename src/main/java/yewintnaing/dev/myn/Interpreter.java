@@ -23,14 +23,23 @@ final class Interpreter {
     }
 
     private void installBuiltins(Environment base) {
-        base.define("print", new Value.NativeV(1, args -> {
+        base.define("print", new Value.NativeV(List.of("value"), List.of("Any"), "Unit", args -> {
             System.out.print(stringify(args.getFirst()));
             return new Value.UnitV();
         }));
-        base.define("println", new Value.NativeV(1, args -> {
+        base.define("println", new Value.NativeV(List.of("value"), List.of("Any"), "Unit", args -> {
             System.out.println(stringify(args.getFirst()));
             return new Value.UnitV();
         }));
+        base.define("typeOf", new Value.NativeV(List.of("value"), List.of("Any"), "String", args ->
+                new Value.StrV(typeName(args.getFirst()))
+        ));
+        base.define("toString", new Value.NativeV(List.of("value"), List.of("Any"), "String", args ->
+                new Value.StrV(stringify(args.getFirst()))
+        ));
+        base.define("len", new Value.NativeV(List.of("value"), List.of("String"), "Int", args ->
+                new Value.IntV(args.getFirst() instanceof Value.StrV(String v) ? v.length() : 0)
+        ));
     }
 
 
@@ -39,20 +48,22 @@ final class Interpreter {
             execBlock(statements, new Environment(env));
         } else if (s instanceof Stmt.Var v) {
             Value init = (v.init() == null) ? new Value.UnitV() : eval(v.init());
+            assertMatchesType(v.typeAnn(), init, "variable '" + v.name().lexeme() + "'", v.name());
 
-            if (env.isExists(v.name())) {
-                throw new RuntimeException(v.name() + " already defined");
+            if (env.isExists(v.name().lexeme())) {
+                throw new RuntimeException(v.name().lexeme() + " already defined");
             }
 
-            env.define(v.name(), init, v.mutable());
+            env.define(v.name().lexeme(), init, v.mutable(), v.typeAnn());
         } else if (s instanceof Stmt.Func f) {
             Value.FuncV fun = new Value.FuncV(
                     f.params(),
                     f.typeAnns(),
+                    f.retType(),
                     List.copyOf(f.body().statements()),
                     env /* closure */
             );
-            env.define(f.name(), fun);
+            env.define(f.name().lexeme(), fun);
         } else if (s instanceof Stmt.If(Expr cond, Stmt thenBranch, Stmt elseBranch)) {
             if (truthy(eval(cond))) exec(thenBranch);
             else if (elseBranch != null) exec(elseBranch);
@@ -61,18 +72,20 @@ final class Interpreter {
         } else if (s instanceof Stmt.Expr(Expr expr)) {
             eval(expr);
         }
-        else if (s instanceof Stmt.Return(Expr value)) {
+        else if (s instanceof Stmt.Return(Token keyword, Expr value)) {
 
             if (functionDepth == 0) {
                 throw new RuntimeException("return is only allowed inside a function");
             }
 
-            throw new ReturnSignal(value == null ? new Value.UnitV() : eval(value));
+            throw new ReturnSignal(value == null ? new Value.UnitV() : eval(value), keyword);
         }
     }
 
     private Value execForRepl(Stmt s) {
         if (s instanceof Stmt.Expr(Expr expr)) {
+            // REPL expression statements evaluate to a visible result, while
+            // non-expression statements keep normal statement semantics.
             return eval(expr);
         }
         exec(s);
@@ -102,16 +115,19 @@ final class Interpreter {
             return new Value.UnitV();
         }
 
-        if (e instanceof Expr.Var(String name)) {
-            return env.get(name);
+        if (e instanceof Expr.Var(Token name)) {
+            return env.get(name.lexeme());
         }
 
-        if (e instanceof Expr.Assign(String name, Expr value)) {
+        if (e instanceof Expr.Assign(Token name, Expr value)) {
             Value val = eval(value);
+            Environment.Slot slot = resolveSlot(name.lexeme());
+            // A typed binding keeps its declared type for every future assignment.
+            assertMatchesType(slot.typeAnn(), val, "variable '" + name.lexeme() + "'", name);
 
 
-            if (!env.assign(name, val)) {
-                throw new RuntimeException("Undefined variable: " + name);
+            if (!env.assign(name.lexeme(), val)) {
+                throw new RuntimeException("Undefined variable: " + name.lexeme());
             }
             return val;
         }
@@ -122,7 +138,7 @@ final class Interpreter {
                 case "++" -> {
                     if (val instanceof Value.IntV(long v)) {
                         long newVal = v + 1;
-                        env.assign(((Expr.Var) target).name(), new Value.IntV(newVal));
+                        env.assign(((Expr.Var) target).name().lexeme(), new Value.IntV(newVal));
                         yield new Value.IntV(v);
                     }else {
                         throw new RuntimeException("Postfix ++ can only be applied to Int");
@@ -131,7 +147,7 @@ final class Interpreter {
                 case "--" -> {
                     if (val instanceof Value.IntV(long v)) {
                         long newVal = v - 1;
-                        env.assign(((Expr.Var) target).name(), new Value.IntV(newVal));
+                        env.assign(((Expr.Var) target).name().lexeme(), new Value.IntV(newVal));
                         yield new Value.IntV(v);
                     }else {
                         throw new RuntimeException("Postfix -- can only be applied to Int");
@@ -147,7 +163,7 @@ final class Interpreter {
                 case "++" -> {
                     if (val instanceof Value.IntV(long v)) {
                         long newVal = v + 1;
-                        env.assign(((Expr.Var) target).name(), new Value.IntV(newVal));
+                        env.assign(((Expr.Var) target).name().lexeme(), new Value.IntV(newVal));
                         yield new Value.IntV(newVal);
                     } else {
                         throw new RuntimeException("Prefix ++ can only be applied to Int");
@@ -156,7 +172,7 @@ final class Interpreter {
                 case "--" -> {
                     if (val instanceof Value.IntV(long v)) {
                         long newVal = v - 1;
-                        env.assign(((Expr.Var) target).name(), new Value.IntV(newVal));
+                        env.assign(((Expr.Var) target).name().lexeme(), new Value.IntV(newVal));
                         yield new Value.IntV(newVal);
                     } else {
                         throw new RuntimeException("Prefix -- can only be applied to Int");
@@ -200,44 +216,56 @@ final class Interpreter {
             return eval(expr);
         }
 
-        if (e instanceof Expr.Call(Expr callee, List<Expr> args)) {
+        if (e instanceof Expr.Call(Expr callee, Token paren, List<Expr> args)) {
             Value calleeValue = eval(callee);
             List<Value> evalArgs = new ArrayList<>();
             for (Expr a : args) evalArgs.add(eval(a));
-            return callFunction(calleeValue, evalArgs);
+            return callFunction(calleeValue, evalArgs, paren);
         }
 
         throw new RuntimeException("unhandled expr: " + e);
     }
 
-    private Value callFunction(Value callee, List<Value> args) {
-        if (callee instanceof Value.NativeV(int arity, java.util.function.Function<List<Value>, Value> call)) {
-            if (args.size() != arity) {
-                throw new RuntimeException("arity mismatch: expected " + arity + " arguments but got " + args.size());
+    private Value callFunction(Value callee, List<Value> args, Token callSite) {
+        if (callee instanceof Value.NativeV(var params, var typeAnns, var retType,
+                java.util.function.Function<List<Value>, Value> call)) {
+            if (args.size() != params.size()) {
+                throw new RuntimeException(at(callSite) + " arity mismatch: expected " + params.size() + " arguments but got " + args.size());
             }
-            return call.apply(args);
+            for (int i = 0; i < params.size(); i++) {
+                assertMatchesType(typeAnns.get(i), args.get(i), "parameter '" + params.get(i) + "'", callSite);
+            }
+            Value result = call.apply(args);
+            assertMatchesType(retType, result, "return value", callSite);
+            return result;
         }
         if (callee instanceof Value.FuncV f) {
             if (args.size() != f.params().size()) {
-                throw new RuntimeException("arity mismatch: expected " + f.params().size() + " arguments but got " + args.size());
+                throw new RuntimeException(at(callSite) + " arity mismatch: expected " + f.params().size() + " arguments but got " + args.size());
             }
+            // User functions execute in a fresh local scope chained to the
+            // closure they captured when the function was declared.
             Environment local = new Environment(f.closure());
             for (int i = 0; i < f.params().size(); i++) {
                 String name = f.params().get(i);
                 Value val = args.get(i);
-                local.define(name, val);
+                String typeAnn = f.typeAnns().get(i);
+                assertMatchesType(typeAnn, val, "parameter '" + name + "'", callSite);
+                local.define(name, val, false, typeAnn);
             }
             try {
                 functionDepth++;
                 execBlock(f.body(), local);
             } catch (ReturnSignal rs) {
+                assertMatchesType(f.retType(), rs.value, "return value", rs.keyword);
                 return rs.value;
             }finally {
                 functionDepth--;
             }
+            assertMatchesType(f.retType(), new Value.UnitV(), "return value", callSite);
             return new Value.UnitV();
         }
-        throw new RuntimeException("not a function");
+        throw new RuntimeException(at(callSite) + " not a function");
     }
 
     // --- Helpers ---------------------------------------------------------------
@@ -283,12 +311,64 @@ final class Interpreter {
         };
     }
 
+    private Environment.Slot resolveSlot(String name) {
+        Environment current = env;
+        while (current != null) {
+            Environment.Slot slot = current.getSlot(name);
+            if (slot != null) {
+                return slot;
+            }
+            current = current.parent();
+        }
+        throw new RuntimeException("Undefined variable: " + name);
+    }
+
+    private static void assertMatchesType(String typeAnn, Value value, String context, Token token) {
+        if (typeAnn == null) {
+            return;
+        }
+
+        // Type annotations are enforced at runtime right now, so we attach the
+        // source token to each failure to keep the error actionable.
+        if (!matchesType(typeAnn, value)) {
+            throw new RuntimeException(at(token) + " Type mismatch for " + context + ": expected " + typeAnn + " but got " + typeName(value));
+        }
+    }
+
+    private static boolean matchesType(String typeAnn, Value value) {
+        return switch (typeAnn) {
+            case "Any" -> true;
+            case "Int" -> value instanceof Value.IntV;
+            case "String" -> value instanceof Value.StrV;
+            case "Boolean" -> value instanceof Value.BoolV;
+            case "Unit" -> value instanceof Value.UnitV;
+            default -> throw new RuntimeException("Unknown type annotation: " + typeAnn);
+        };
+    }
+
+    private static String typeName(Value value) {
+        return switch (value) {
+            case Value.IntV ignored -> "Int";
+            case Value.StrV ignored -> "String";
+            case Value.BoolV ignored -> "Boolean";
+            case Value.UnitV ignored -> "Unit";
+            case Value.FuncV ignored -> "Function";
+            case Value.NativeV ignored -> "Function";
+        };
+    }
+
+    private static String at(Token token) {
+        return "[line " + token.line() + ", col " + token.col() + "]";
+    }
+
     // used to unwind to the function call site
     private static final class ReturnSignal extends RuntimeException {
         final Value value;
+        final Token keyword;
 
-        ReturnSignal(Value v) {
+        ReturnSignal(Value v, Token keyword) {
             this.value = v;
+            this.keyword = keyword;
         }
     }
 }

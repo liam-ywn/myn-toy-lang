@@ -1,0 +1,16 @@
+println("Compiler demo");
+
+var total: Int = 0;
+var i: Int = 0;
+
+while (i < 4) {
+  total = total + i;
+  i++;
+}
+
+if (total == 6) {
+  println("sum = " + toString(total));
+}
+
+println(typeOf(total));
+println(len("myn"));

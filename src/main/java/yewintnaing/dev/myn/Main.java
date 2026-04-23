@@ -5,13 +5,36 @@ import java.io.*;
 import java.util.*;
 
 public class Main {
+    private static final String COMPILE_FLAG = "--compile";
 
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
             repl();
+        } else if (COMPILE_FLAG.equals(args[0])) {
+            compileCommand(args);
         } else {
             String src = Files.readString(Path.of(args[0]));
             run(src);
+        }
+    }
+
+    private static void compileCommand(String[] args) throws IOException {
+        if (args.length < 3 || args.length > 4) {
+            System.err.println("Usage: --compile <source.myn> <output-dir> [ClassName]");
+            return;
+        }
+
+        Path sourcePath = Path.of(args[1]);
+        Path outputDir = Path.of(args[2]);
+        String className = args.length == 4 ? args[3] : defaultClassName(sourcePath);
+
+        try {
+            String src = Files.readString(sourcePath);
+            List<Stmt> program = parse(src);
+            new JvmCompiler().compile(program, className, outputDir);
+            System.out.println("Compiled " + sourcePath + " -> " + outputDir.resolve(className + ".class"));
+        } catch (Exception e) {
+            System.err.println("[CompileError] " + e.getMessage());
         }
     }
 
@@ -56,6 +79,8 @@ public class Main {
 
     private static void runReplChunk(String src, Interpreter interpreter, boolean printExpressionResult) {
         try {
+            // Bare REPL expressions do not need a trailing ';', so we synthesize one
+            // only for parsing and then print the resulting value if it is non-Unit.
             List<Stmt> program = parse(printExpressionResult ? src + ";" : src);
             Value result = interpreter.execForRepl(program);
             if (printExpressionResult && !(result instanceof Value.UnitV)) {
@@ -84,6 +109,8 @@ public class Main {
         }
 
         try {
+            // If the buffered text becomes a valid statement when treated as an
+            // expression statement, we can execute it as a bare REPL expression.
             parse(buffer + ";");
             return true;
         } catch (RuntimeException e) {
@@ -101,6 +128,8 @@ public class Main {
         boolean inString = false;
         boolean escaping = false;
 
+        // This lightweight scan lets the REPL distinguish "keep reading" from
+        // "ready to parse" without surfacing noisy parser errors mid-input.
         for (int i = 0; i < src.length(); i++) {
             char c = src.charAt(i);
 
@@ -149,5 +178,26 @@ public class Main {
         boolean isBalanced() {
             return parenDepth == 0 && braceDepth == 0 && !inString;
         }
+    }
+
+    private static String defaultClassName(Path sourcePath) {
+        String fileName = sourcePath.getFileName().toString();
+        int dot = fileName.lastIndexOf('.');
+        String base = dot >= 0 ? fileName.substring(0, dot) : fileName;
+        StringBuilder out = new StringBuilder();
+        boolean capitalizeNext = true;
+        for (int i = 0; i < base.length(); i++) {
+            char c = base.charAt(i);
+            if (Character.isLetterOrDigit(c)) {
+                if (out.isEmpty() && Character.isDigit(c)) {
+                    out.append('M');
+                }
+                out.append(capitalizeNext ? Character.toUpperCase(c) : c);
+                capitalizeNext = false;
+            } else {
+                capitalizeNext = true;
+            }
+        }
+        return out.isEmpty() ? "MynProgram" : out.toString();
     }
 }

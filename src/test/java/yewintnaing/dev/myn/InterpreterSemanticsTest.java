@@ -145,6 +145,127 @@ class InterpreterSemanticsTest {
         assertEquals("... ", Main.promptForBuffer("if (true) {\n"));
     }
 
+    @Test
+    void variableAnnotationsAreCheckedOnDeclarationAndAssignment() {
+        RuntimeException declarationError = assertThrows(RuntimeException.class, () -> runProgram("""
+                let x: Int = "oops";
+                """));
+
+        assertTrue(declarationError.getMessage().contains("[line 1, col"));
+        assertTrue(declarationError.getMessage().contains("expected Int but got String"));
+
+        RuntimeException assignmentError = assertThrows(RuntimeException.class, () -> runProgram("""
+                var x: Int = 1;
+                x = "oops";
+                """));
+
+        assertTrue(assignmentError.getMessage().contains("[line 2, col"));
+        assertTrue(assignmentError.getMessage().contains("variable 'x'"));
+        assertTrue(assignmentError.getMessage().contains("expected Int but got String"));
+    }
+
+    @Test
+    void functionParameterAnnotationsAreChecked() {
+        RuntimeException error = assertThrows(RuntimeException.class, () -> runProgram("""
+                fun label(flag: Boolean): Unit {
+                  println(flag);
+                }
+                label(1);
+                """));
+
+        assertTrue(error.getMessage().contains("[line 4, col"));
+        assertTrue(error.getMessage().contains("parameter 'flag'"));
+        assertTrue(error.getMessage().contains("expected Boolean but got Int"));
+    }
+
+    @Test
+    void functionReturnAnnotationsAreChecked() {
+        RuntimeException wrongReturnType = assertThrows(RuntimeException.class, () -> runProgram("""
+                fun bad(): Int {
+                  return "oops";
+                }
+                bad();
+                """));
+
+        assertTrue(wrongReturnType.getMessage().contains("[line 2, col"));
+        assertTrue(wrongReturnType.getMessage().contains("return value"));
+        assertTrue(wrongReturnType.getMessage().contains("expected Int but got String"));
+
+        RuntimeException missingReturn = assertThrows(RuntimeException.class, () -> runProgram("""
+                fun bad(): Boolean {
+                  println("hi");
+                }
+                bad();
+                """));
+
+        assertTrue(missingReturn.getMessage().contains("[line 4, col"));
+        assertTrue(missingReturn.getMessage().contains("return value"));
+        assertTrue(missingReturn.getMessage().contains("expected Boolean but got Unit"));
+    }
+
+    @Test
+    void unitAnnotationsAcceptNoInitializerAndUnitReturn() {
+        String output = runProgram("""
+                let marker: Unit;
+                fun log(flag: Boolean): Unit {
+                  if (flag) {
+                    println("ok");
+                    return;
+                  }
+                }
+                log(true);
+                """);
+
+        assertEquals("ok%n".formatted(), output);
+    }
+
+    @Test
+    void typedBuiltinsAcceptAnyValueAndReturnUnit() {
+        String output = runProgram("""
+                let marker: Unit;
+                println(1);
+                println("hi");
+                println(true);
+                print(marker);
+                """);
+
+        assertEquals("1%nhi%ntrue%nUnit".formatted(), output);
+    }
+
+    @Test
+    void typedBuiltinsStillEnforceArity() {
+        RuntimeException error = assertThrows(RuntimeException.class, () -> runProgram("""
+                println();
+                """));
+
+        assertTrue(error.getMessage().contains("[line 1, col"));
+        assertTrue(error.getMessage().contains("expected 1 arguments but got 0"));
+    }
+
+    @Test
+    void utilityBuiltinsReturnTypedResults() {
+        String output = runProgram("""
+                println(typeOf(1));
+                println(typeOf("hi"));
+                println(typeOf(true));
+                println(toString(123));
+                println(len("myn"));
+                """);
+
+        assertEquals("Int%nString%nBoolean%n123%n3%n".formatted(), output);
+    }
+
+    @Test
+    void utilityBuiltinsEnforceTheirParameterTypes() {
+        RuntimeException error = assertThrows(RuntimeException.class, () -> runProgram("""
+                len(123);
+                """));
+
+        assertTrue(error.getMessage().contains("[line 1, col"));
+        assertTrue(error.getMessage().contains("parameter 'value'"));
+        assertTrue(error.getMessage().contains("expected String but got Int"));
+    }
+
     private static List<Stmt> parse(String src) {
         Lexer lexer = new Lexer(src);
         Parser parser = new Parser(lexer.scan());

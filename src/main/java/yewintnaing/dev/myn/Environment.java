@@ -6,7 +6,7 @@ final class Environment {
     private final Map<String, Slot> values = new HashMap<>();
     private final Environment parent;
 
-    record Slot(Value value, boolean mutable) {
+    record Slot(Value value, boolean mutable, String typeAnn) {
     }
 
     Environment() {
@@ -17,17 +17,25 @@ final class Environment {
         this.parent = parent;
     }
 
+    Environment parent() {
+        return parent;
+    }
+
     void define(String name, Value v) {
-        define(name, v, false);
+        define(name, v, false, null);
     }
 
     void define(String name, Value v, boolean mutable) {
+        define(name, v, mutable, null);
+    }
+
+    void define(String name, Value v, boolean mutable, String typeAnn) {
 
         if (values.containsKey(name)) {
             throw new RuntimeException("Variable already defined in this scope: " + name);
         }
 
-        values.put(name, new Slot(v, mutable));
+        values.put(name, new Slot(v, mutable, typeAnn));
     }
 
     /**
@@ -43,7 +51,7 @@ final class Environment {
                 throw new RuntimeException("cannot assign to immutable variable: " + name);
             }
 
-            values.put(name, new Slot(newValue, true));
+            values.put(name, new Slot(newValue, true, here.typeAnn()));
             return true;
         }
         if (parent != null) {

@@ -28,7 +28,7 @@ final class Parser {
     }
 
     private Stmt funDecl() {
-        String name = consume(TokenType.IDENTIFIER, "Expected function name").lexeme();
+        Token name = consume(TokenType.IDENTIFIER, "Expected function name");
         consume(TokenType.LEFT_PAREN, "(");
 
         List<String> params = new ArrayList<>();
@@ -54,7 +54,7 @@ final class Parser {
     }
 
     private Stmt varDecl(boolean mutable) {
-        String name = consume(TokenType.IDENTIFIER, "var name").lexeme();
+        Token name = consume(TokenType.IDENTIFIER, "var name");
         String type = null;
         if (match(TokenType.COLON)) type = consume(TokenType.IDENTIFIER, "type").lexeme();
         Expr init = null;
@@ -96,10 +96,11 @@ final class Parser {
     }
 
     private Stmt.Return returnStmt() {
+        Token keyword = prev();
         Expr v = null;
         if (!check(TokenType.SEMICOLON)) v = expression();
         consume(TokenType.SEMICOLON, ";");
-        return new Stmt.Return(v);
+        return new Stmt.Return(keyword, v);
     }
 
     private Stmt.Block block() {
@@ -126,7 +127,7 @@ final class Parser {
         Expr expr = logicOr();
         if (match(TokenType.EQUAL)) {
             Token equals = prev();
-            if (expr instanceof Expr.Var(String name)) {
+            if (expr instanceof Expr.Var(Token name)) {
                 return new Expr.Assign(name, assignment());
             }
             throw error(equals, "Invalid assignment target");
@@ -219,6 +220,7 @@ final class Parser {
     private Expr call() {
         Expr expr = primary();
         while (match(TokenType.LEFT_PAREN)) {
+            Token paren = prev();
             List<Expr> args = new ArrayList<>();
             if (!check(TokenType.RIGHT_PAREN)) {
                 do {
@@ -226,7 +228,7 @@ final class Parser {
                 } while (match(TokenType.COMMA));
             }
             consume(TokenType.RIGHT_PAREN, ")");
-            expr = new Expr.Call(expr, args);
+            expr = new Expr.Call(expr, paren, args);
         }
         return expr;
     }
@@ -236,7 +238,7 @@ final class Parser {
         if (match(TokenType.TRUE)) return new Expr.Literal(true);
         if (match(TokenType.NUMBER)) return new Expr.Literal(prev().literal());
         if (match(TokenType.STRING)) return new Expr.Literal(prev().literal());
-        if (match(TokenType.IDENTIFIER)) return new Expr.Var(prev().lexeme());
+        if (match(TokenType.IDENTIFIER)) return new Expr.Var(prev());
         if (match(TokenType.LEFT_PAREN)) {
             Expr e = expression();
             consume(TokenType.RIGHT_PAREN, ")");
