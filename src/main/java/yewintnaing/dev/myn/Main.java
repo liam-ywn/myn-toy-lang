@@ -31,7 +31,10 @@ public class Main {
         try {
             String src = Files.readString(sourcePath);
             List<Stmt> program = parse(src);
-            new JvmCompiler().compile(program, className, outputDir);
+            Resolver.Resolution resolution = new Resolver().resolve(program);
+            TypeChecker.TypeCheckResult types = new TypeChecker().check(program, resolution);
+            MynIr.Module ir = new IrLowerer().lower(program, types);
+            new JvmIrCompiler().compile(ir, className, outputDir);
             System.out.println("Compiled " + sourcePath + " -> " + outputDir.resolve(className + ".class"));
         } catch (Exception e) {
             System.err.println("[CompileError] " + e.getMessage());
